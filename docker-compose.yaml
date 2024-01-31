@@ -1,8 +1,9 @@
 # volumes:
+version: '3.8'
+
+
 services:
   fastapi:
-    environment:
-      CORS_HOST: http://localhost:3000
     build:
       context: api
       dockerfile: Dockerfile.dev
@@ -10,7 +11,11 @@ services:
       - 8000:8000
     volumes:
       - ./api:/app
-
+    environment:
+      CORS_HOST: http://localhost:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      TEXT_TO_SPEECH: ${TEXT_TO_SPEECH}
+      SPEECH_TO_TEXT: ${SPEECH_TO_TEXT}
   ghi:
     image: node:lts-bullseye
     command: /bin/bash run.sh
@@ -25,3 +30,8 @@ services:
       HOST: "0.0.0.0"
       PUBLIC_URL: http://localhost:3000
       REACT_APP_API_HOST: ${REACT_APP_API_HOST}
+
+networks:
+  default:
+    name: ironman_network
+    driver: bridge

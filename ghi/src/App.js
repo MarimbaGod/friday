@@ -1,37 +1,52 @@
-import { useEffect, useState } from "react";
-import Construct from "./Construct.js";
-import ErrorNotification from "./ErrorNotification";
+import React, { useEffect, useState } from "react";
+import { ChakraProvider, theme } from '@chakra-ui/react';
+import AudioRecorder from './AudioRecorder';
+import ResponseDisplay from './ResponseDisplay'
 import "./App.css";
 
 function App() {
-  const [launchInfo, setLaunchInfo] = useState([]);
-  const [error, setError] = useState(null);
+  const [fridayResponse, setFridayResponse] = useState(null);
+  const [responseText, setResponseText] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
 
-  useEffect(() => {
-    async function getData() {
-      let url = `${process.env.REACT_APP_API_HOST}/api/launch-details`;
-      console.log("fastapi url: ", url);
-      let response = await fetch(url);
-      console.log("------- hello? -------");
-      let data = await response.json();
+  const handleAudioSubmission = async (audioBlob) => {
+    const formData = new FormData();
+    formData.append("audio_file", audioBlob, "audio.mp3");
 
-      if (response.ok) {
-        console.log("got launch data!");
-        setLaunchInfo(data.launch_details);
-      } else {
-        console.log("drat! something happened");
-        setError(data.message);
-      }
+    try {
+      // transcribe input
+      const transcriptionResponse = await fetch('http://localhost:8000/friday/input', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!transcriptionResponse.ok) throw new Error('Network response was not ok');
+
+      const transcribedText = await transcriptionResponse.text();
+      //do something with the text
+
+      const askFridayResponse = await fetch('http://localhost:8000/friday', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_input: transcribedText, conversation_history: "[]" }),
+      });
+      if (!askFridayResponse.ok) throw new Error('askFriday response not ok');
+      // Process response from askFriday
+      const fridayResponseData = await askFridayResponse.json();
+
+      // use Friday's Response
+    } catch (error) {
+      console.error("Error submitting audio:", error);
     }
-    getData();
-  }, []);
+  };
 
   return (
-    <div>
-      <ErrorNotification error={error} />
-      <Construct info={launchInfo} />
-    </div>
+    <ChakraProvider theme={theme}>
+      <AudioRecorder onAudioRecorded={handleAudioSubmission} />
+      {fridayResponse && <ResponseDisplay response={fridayResponse} />}
+    </ChakraProvider>
   );
-}
+};
 
 export default App;
